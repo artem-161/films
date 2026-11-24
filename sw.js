@@ -1,5 +1,5 @@
 // Service worker: приложение открывается без сети, постеры кэшируются.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'posters-v1';
 const SHELL_FILES = [

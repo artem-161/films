@@ -438,3 +438,11 @@ body {
 .type-badge.on-pic { position: absolute; right: 8px; bottom: 8px; font-size: 10px; padding: 3px 7px; background: rgba(20, 18, 26, .45); }
 .type-badge.on-pic.series { background: rgba(91, 75, 255, .6); }
 .rows .type-badge.on-pic { display: none; }
+
+/* подсказка про Safari и код пары */
+.install-tip { position: relative; margin: 0 16px 10px; padding: 12px 40px 12px 14px; border-radius: 18px; font-size: 14px; line-height: 1.45; color: rgba(255,255,255,.86); }
+.onb .install-tip { padding-right: 14px; }
+.install-tip .tip-x { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.install-tip .tip-x svg { width: 14px; height: 14px; }
+.code-chip { font: 800 14px ui-monospace, "SF Mono", monospace; letter-spacing: .08em; color: var(--gold); padding: 1px 7px; border-radius: 8px; background: rgba(255,184,77,.14); }
+button.code { width: auto; }

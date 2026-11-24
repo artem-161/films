@@ -87,6 +87,36 @@ async function boot() {
   if (ok) startApp(); else renderOnboarding();
 }
 
+// На iPhone у Safari и приложения «на экране Домой» раздельные хранилища:
+// вход, сделанный в Safari, приложение не видит.
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const inSafariOnIOS = () => isIOS() && !isStandalone();
+
+async function copyCode() {
+  try { await navigator.clipboard.writeText(store.couple.code); toast(`Код ${store.couple.code} скопирован`); }
+  catch { toast(`Код пары: ${store.couple.code}`, 5000); }
+}
+function bindCopyCode(root) {
+  $$('[data-copy-code]', root).forEach(b => b.onclick = e => { e.stopPropagation(); copyCode(); });
+}
+
+function showCodeSheet() {
+  const sh = openSheet(`
+    <div style="text-align:center">
+      <div style="font-size:44px">🔑</div>
+      <h2>Ваш код пары</h2>
+      <div class="count" style="margin-top:6px">С ним вы войдёте снова: на новом телефоне, после очистки Safari или в приложении на экране «Домой». Сохрани его, например, в Заметках.</div>
+      <button class="code" data-copy-code style="display:block;margin:16px auto">${h(store.couple.code)}</button>
+      <div class="stack">
+        <button class="btn primary" data-copy-code>Скопировать код</button>
+        ${isDemo() ? '' : `<button class="btn" id="codeShare">${I.share} Отправить приглашение</button>`}
+      </div>
+    </div>`);
+  bindCopyCode(sh);
+  const s = $('#codeShare', sh); if (s) s.onclick = shareInvite;
+}
+
 function startApp() {
   if (new URLSearchParams(location.search).has('join')) history.replaceState(null, '', location.pathname);
   $('#app').innerHTML = `
@@ -97,9 +127,18 @@ function startApp() {
         <button class="icon-btn" id="settingsBtn" aria-label="Настройки">${I.gear}</button>
       </div>
     </header>
+    ${inSafariOnIOS() && !LS.get('kv_tip_hidden', false) ? `
+    <div class="install-tip glass" id="safariTip">
+      <div><b>Открыто в Safari.</b> Добавь на экран «Домой» («Поделиться» → «На экран Домой»), открой с иконки и войди кодом пары
+        <button class="code-chip" data-copy-code>${h(store.couple.code)}</button> → «Я — ${h(store.me.name)}».</div>
+      <button class="tip-x" id="tipClose" aria-label="Скрыть">${I.x}</button>
+    </div>` : ''}
     <main id="view"></main>
     <nav class="tabbar" id="tabbar"></nav>`;
   $('#settingsBtn').onclick = openSettings;
+  const tc = $('#tipClose');
+  if (tc) tc.onclick = () => { LS.set('kv_tip_hidden', true); $('#safariTip').remove(); };
+  bindCopyCode($('#app'));
   store.on(onStoreEvent);
   render();
   fillDeck();
@@ -847,7 +886,8 @@ function openSettings() {
     <label class="lbl">Пара</label>
     <div class="invite" style="margin:0;padding:16px">
       <div style="color:var(--muted);font-size:14px">${store.partner ? `Ты и ${h(partnerName())}` : 'Партнёр ещё не присоединился'}</div>
-      <div class="code" style="margin:10px 0">${h(store.couple.code)}</div>
+      <button class="code" data-copy-code style="display:block;margin:10px auto">${h(store.couple.code)}</button>
+      <div class="count" style="margin:-4px 0 12px">Нажми на код, чтобы скопировать. С ним вы войдёте на любом устройстве.</div>
       ${isDemo() ? '' : `<button class="btn" id="shareBtn">${I.share} Поделиться приглашением</button>`}
     </div>
 
@@ -862,6 +902,7 @@ function openSettings() {
     try { await store.rename(v); toast('Имя сохранено'); render(); } catch (e) { fail(e); }
   };
   const sb = $('#shareBtn', sh); if (sb) sb.onclick = shareInvite;
+  bindCopyCode(sh);
   $('#leaveBtn', sh).onclick = () => {
     const msg = isDemo() ? 'Удалить все демо-данные?' : 'Выйти из пары на этом устройстве? Данные останутся в базе, вернуться можно по коду пары.';
     if (!confirm(msg)) return;
@@ -882,6 +923,9 @@ function renderOnboarding() {
     <div class="onb-logo">🍿</div>
     <h1>Кино на вечер</h1>
     <p class="lead">Свайпайте фильмы вдвоём, приложение найдёт совпадения и поможет выбрать.</p>
+    ${inSafariOnIOS() ? `<div class="install-tip glass" style="margin:0 0 18px">
+      <div><b>📲 Сначала установи приложение.</b> Нажми «Поделиться» → «На экран Домой» и открой его с иконки.
+      Safari и приложение на iPhone не делят вход: если зарегистрироваться здесь, в приложении придётся входить кодом пары ещё раз.</div></div>` : ''}
     <label class="lbl">Как тебя зовут?</label>
     <input class="field" id="nameIn" maxlength="20" placeholder="Имя" autocomplete="given-name">
     <div id="onbBody"></div>
@@ -896,7 +940,7 @@ function renderOnboarding() {
     body.innerHTML = `
       ${joinCode ? '' : `<div style="height:16px"></div><button class="btn primary" id="createBtn">Создать нашу пару</button>`}
       ${isDemo() ? '' : `
-        <div class="or">${joinCode ? 'тебя пригласили' : 'или'}</div>
+        <div class="or">${joinCode ? 'тебя пригласили' : 'уже есть пара? войди по коду'}</div>
         <div class="row">
           <input class="field" id="codeIn" placeholder="Код пары" value="${h(joinCode)}" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em">
           <button class="btn small ${joinCode ? 'primary' : ''}" id="joinBtn">Войти</button>
@@ -905,7 +949,7 @@ function renderOnboarding() {
     if (cb) cb.onclick = async () => {
       if (!needName()) return;
       busy(cb, true);
-      try { await store.createCouple(name()); startApp(); } catch (e) { fail(e); busy(cb, false); }
+      try { await store.createCouple(name()); startApp(); showCodeSheet(); } catch (e) { fail(e); busy(cb, false); }
     };
     const jb = $('#joinBtn');
     if (jb) jb.onclick = async () => {
