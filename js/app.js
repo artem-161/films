@@ -274,7 +274,12 @@ function renderDeck() {
   state.deck = state.deck.filter(m => store.myVote(m.id) === undefined && !store.isWatched(m.id));
   const inDeck = new Set(state.deck.map(m => m.id));
   const pending = store.pendingForMe().filter(m => m && !inDeck.has(m.id));
-  if (pending.length) state.deck.unshift(...pending);
+  if (pending.length) {
+    // карточку, которая уже на экране, не подменяем: предложения встают сразу за ней
+    const shownId = +deck.querySelector('.card.top')?.dataset.id;
+    const keep = shownId && state.deck[0]?.id === shownId ? 1 : 0;
+    state.deck.splice(keep, 0, ...pending);
+  }
 
   $('#undoBtn').disabled = !state.history.length;
   const top = state.deck.slice(0, 3);
